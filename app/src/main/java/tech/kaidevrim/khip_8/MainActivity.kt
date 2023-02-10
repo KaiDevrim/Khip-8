@@ -1,46 +1,24 @@
 package tech.kaidevrim.khip_8
 
+import android.app.Activity
+import android.opengl.GLSurfaceView
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import tech.kaidevrim.khip_8.ui.theme.Khip8Theme
 
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
+class MainActivity : Activity() {
+    private lateinit var gLView: GLSurfaceView
+    public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            Khip8Theme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Greeting("Android")
-                }
-            }
-        }
+        setContentView(R.layout.activity_main)
+        gLView = findViewById<GLSurfaceView>(R.id.openGLView)
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    override fun onResume() {
+        super.onResume()
+        gLView.onResume()
+    }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Khip8Theme {
-        Greeting("Android")
+    override fun onPause() {
+        super.onPause()
+        gLView.onPause()
     }
 }
