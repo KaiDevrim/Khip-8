@@ -6,10 +6,13 @@ import android.os.Bundle
 
 class MainActivity : Activity() {
     private lateinit var gLView: GLSurfaceView
+    private lateinit var chip8: Chip8
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         gLView = findViewById<GLSurfaceView>(R.id.openGLView)
+        chip8.init(chip8)
+
     }
 
     override fun onResume() {
