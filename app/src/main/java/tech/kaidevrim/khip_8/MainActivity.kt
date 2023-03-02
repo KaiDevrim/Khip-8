@@ -6,7 +6,7 @@ import android.os.Bundle
 
 class MainActivity : Activity() {
     private lateinit var gLView: GLSurfaceView
-    private lateinit var chip8: Chip8
+    private var chip8: Chip8 = Chip8()
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
