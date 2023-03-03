@@ -9,8 +9,8 @@ class Chip8 {
     private var memory: UByteArray = UByteArray(4096)
     private var graphics: UByteArray = UByteArray(64 * 32)
     private var registers: UByteArray = UByteArray(16)
-    private var rIndex: UShort? = null
-    private var programCounter: UShort = 0u
+    private var registerIndex: UShort? = null
+    private var programCounter: UShort? = null
 
     private var delayTimer: UByte? = null
     private var soundTimer: UByte? = null
@@ -18,7 +18,7 @@ class Chip8 {
     private var stack: UShortArray = UShortArray(16)
     private var sp: UShort? = null
 
-    private val chip8Fontset = intArrayOf(
+    private val chip8Fontset: IntArray = intArrayOf(
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
         0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -39,10 +39,17 @@ class Chip8 {
 
     private var keys: UByteArray = UByteArray(16)
     // fun randomUInt() = Random(Clock.System.now().epochSeconds).nextUInt()
+    private fun shiftLeft(uShort: UShort, bits: Int): UShort {
+        return (uShort.toInt() shl bits).toUShort()
+    }
+    //fun shiftRight(uShort: UShort, bits: Int): UShort {
+    //    return (uShort.toInt() shr bits).toUShort()
+    // }
+    @OptIn(ExperimentalUnsignedTypes::class)
     fun init(self: Chip8) {
         self.programCounter = 512u
         self.opcode = 0u
-        self.rIndex = 0u
+        self.registerIndex = 0u
         self.sp = 0u
 
         self.memory.forEachIndexed { index, _ -> self.memory[index] = 0u }
@@ -57,13 +64,35 @@ class Chip8 {
         self.chip8Fontset.forEachIndexed {index, element -> self.memory[index] = element.toUByte() }
     }
 
-    private fun increment_pc(self: Chip8) {
-        self.programCounter = (self.programCounter + 2u).toUShort()
+    private fun incrementPc(self: Chip8) {
+        self.programCounter = (self.programCounter?.plus(2u))?.toUShort()
     }
 
+    @OptIn(ExperimentalUnsignedTypes::class)
     fun cycle(self: Chip8) {
-        if (self.programCounter > 4095u) {
+        if (self.programCounter!! > 4095u) {
             throw Exception("OPcode out of range! Your program has an error!")
         }
+        println("Hi!!!!")
+        self.opcode = self.memory[self.programCounter?.toInt()!!].toUShort()
+        self.opcode = shiftLeft(self.opcode!!, 8).or(self.memory[(self.programCounter!! + 1u).toInt()].toUShort())
+        when(opcode?.and(4096u)) {
+            224u.toUShort() -> {
+                self.graphics.forEachIndexed { index, _ -> self.graphics[index] = 0u }
+                self.incrementPc(self)
+            }
+
+            238u.toUShort() -> {
+                self.sp = (self.sp!! - 1u).toUShort()
+                self.programCounter = self.stack[self.sp?.toInt()!!]
+                self.incrementPc(self)
+            }
+
+            else -> {
+                // var first = shiftRight(self.opcode!!, 12)
+                println("The current opcode is: " + self.opcode)
+            }
+        }
+
     }
 }
