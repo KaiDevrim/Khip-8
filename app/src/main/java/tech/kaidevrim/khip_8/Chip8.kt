@@ -2,7 +2,12 @@
 
 package tech.kaidevrim.khip_8
 
+import kotlinx.datetime.Clock
 import java.lang.Exception
+import kotlin.random.Random
+import kotlin.random.nextUInt
+
+
 
 class Chip8 {
     private var opcode: UShort? = null
@@ -38,13 +43,13 @@ class Chip8 {
     )
 
     private var keys: UByteArray = UByteArray(16)
-    // fun randomUInt() = Random(Clock.System.now().epochSeconds).nextUInt()
+    fun randomUInt() = Random(Clock.System.now().epochSeconds).nextUInt()
     private fun shiftLeft(uShort: UShort, bits: Int): UShort {
         return (uShort.toInt() shl bits).toUShort()
     }
-    //fun shiftRight(uShort: UShort, bits: Int): UShort {
-    //    return (uShort.toInt() shr bits).toUShort()
-    // }
+    fun shiftRight(uShort: UShort, bits: Int): UShort {
+        return (uShort.toInt() shr bits).toUShort()
+     }
     @OptIn(ExperimentalUnsignedTypes::class)
     fun init(self: Chip8) {
         self.programCounter = 512u
@@ -70,12 +75,13 @@ class Chip8 {
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun cycle(self: Chip8) {
-        if (self.programCounter!! > 4095u) {
+        if (self.programCounter!! > "0xFFF".toUInt()) {
             throw Exception("OPcode out of range! Your program has an error!")
         }
-        println("Hi!!!!")
+
         self.opcode = self.memory[self.programCounter?.toInt()!!].toUShort()
         self.opcode = shiftLeft(self.opcode!!, 8).or(self.memory[(self.programCounter!! + 1u).toInt()].toUShort())
+
         when(opcode?.and(4096u)) {
             224u.toUShort() -> {
                 self.graphics.forEachIndexed { index, _ -> self.graphics[index] = 0u }
@@ -86,6 +92,14 @@ class Chip8 {
                 self.sp = (self.sp!! - 1u).toUShort()
                 self.programCounter = self.stack[self.sp?.toInt()!!]
                 self.incrementPc(self)
+            }
+
+            32768u.toUShort() -> {
+                when(opcode?.and(15u)) {
+                    0u.toUShort() -> {
+
+                    }
+                }
             }
 
             else -> {
