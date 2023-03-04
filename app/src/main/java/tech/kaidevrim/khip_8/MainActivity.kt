@@ -1,38 +1,35 @@
 package tech.kaidevrim.khip_8
 
-import android.app.Activity
-import android.opengl.GLSurfaceView
-import android.os.Bundle
+import org.openrndr.application
+import org.openrndr.color.ColorRGBa
+import org.openrndr.draw.tint
 import java.lang.Exception
 import kotlin.system.exitProcess
 
-class MainActivity : Activity() {
-    private lateinit var gLView: GLSurfaceView
-    private var chip8: Chip8 = Chip8()
-    public override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        gLView = findViewById<GLSurfaceView>(R.id.openGLView)
+
+private var chip8: Chip8 = Chip8()
+private var keepOpen: Boolean = true
+
+fun main() = application {
+    configure {
+        width = 640
+        height = 320
         chip8.init(chip8)
-        var keepOpen = true
-        while (keepOpen) {
-            try {
-                chip8.cycle(chip8)
-            } catch (err: Exception) {
-                println(err)
-                exitProcess(-1)
+    }
+
+    program {
+        extend {
+            drawer.drawStyle.colorMatrix = tint(ColorRGBa.WHITE.shade(0.2))
+            drawer.fill = ColorRGBa.WHITE
+            while (keepOpen) {
+                try {
+                    chip8.cycle(chip8)
+                } catch (err: Exception) {
+                    println(err)
+                    exitProcess(-1)
+                }
+                keepOpen = false
             }
-            keepOpen = false
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        gLView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        gLView.onPause()
     }
 }

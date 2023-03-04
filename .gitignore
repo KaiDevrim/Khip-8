@@ -1,3 +1,12 @@
+
+application.log
+build
+out
+.idea
+.gradle
+video/
+screenshots/
+gui-parameters/
 # Created by https://www.toptal.com/developers/gitignore/api/macos,windows,linux,kotlin,android,androidstudio,gradle,maven,java
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,windows,linux,kotlin,android,androidstudio,gradle,maven,java
 
@@ -174,7 +183,6 @@ $RECYCLE.BIN/
 *.lnk
 
 ### Gradle ###
-.gradle
 **/build/
 !src/**/build/
 
@@ -311,4 +319,3 @@ fabric.properties
 !/gradle/wrapper/gradle-wrapper.jar
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,linux,kotlin,android,androidstudio,gradle,maven,java
-

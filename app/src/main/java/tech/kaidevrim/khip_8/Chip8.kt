@@ -75,7 +75,7 @@ class Chip8 {
 
     @OptIn(ExperimentalUnsignedTypes::class)
     fun cycle(self: Chip8) {
-        if (self.programCounter!! > "0xFFF".toUInt()) {
+        if (self.programCounter!! > 4095u) {
             throw Exception("OPcode out of range! Your program has an error!")
         }
 
