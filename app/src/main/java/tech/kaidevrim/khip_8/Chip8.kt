@@ -1,5 +1,4 @@
-@file:OptIn(ExperimentalUnsignedTypes::class)
-
+@file:OptIn(ExperimentalUnsignedTypes::class, ExperimentalUnsignedTypes::class, ExperimentalUnsignedTypes::class)
 package tech.kaidevrim.khip_8
 
 import kotlinx.datetime.Clock
@@ -8,10 +7,12 @@ import kotlin.random.Random
 import kotlin.random.nextUInt
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.Drawer
+import kotlin.math.floor
 
 
 class Chip8 {
     private var drawer: Drawer? = null
+    private val scale: Double = 10.0
     private var opcode: UShort? = null
     private var memory: UByteArray = UByteArray(4096)
     private var graphics: UByteArray = UByteArray(64 * 32)
@@ -70,6 +71,10 @@ class Chip8 {
         self.soundTimer = 0u
 
         self.chip8Fontset.forEachIndexed {index, element -> self.memory[index] = element.toUByte() }
+
+        self.graphics[5] = 1u
+        self.graphics[1] = 1u
+        self.graphics[95] = 1u
     }
 
     private fun incrementPc(self: Chip8) {
@@ -81,9 +86,10 @@ class Chip8 {
         if (self.programCounter!! > 4095u) {
             throw Exception("OPcode out of range! Your program has an error!")
         }
-
-        self.drawer?.clear(ColorRGBa.BLUE)
-
+        setDisplay(self)
+        shiftRight(0u, 0)
+        shiftLeft(0u, 0)
+        randomUInt()
         self.opcode = self.memory[self.programCounter?.toInt()!!].toUShort()
         self.opcode = shiftLeft(self.opcode!!, 8).or(self.memory[(self.programCounter!! + 1u).toInt()].toUShort())
 
@@ -111,6 +117,21 @@ class Chip8 {
                 println("The current opcode is: " + self.opcode)
             }
         }
+    }
 
+    @OptIn(ExperimentalUnsignedTypes::class)
+    private fun setDisplay(self: Chip8) {
+        for (i in self.graphics.indices) {
+            if (self.graphics[i] == 0u.toUByte()) {
+                self.drawer?.fill = ColorRGBa.BLACK
+            }
+            else {
+                self.drawer?.fill = ColorRGBa.WHITE
+            }
+            val x: Int = (i % 64)
+            val y: Int = floor(i / 64.0).toInt()
+
+            self.drawer?.rectangle(x*scale, y*scale, scale, scale)
+        }
     }
 }
