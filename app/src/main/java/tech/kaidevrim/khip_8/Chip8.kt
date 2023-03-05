@@ -6,10 +6,12 @@ import kotlinx.datetime.Clock
 import java.lang.Exception
 import kotlin.random.Random
 import kotlin.random.nextUInt
-
+import org.openrndr.color.ColorRGBa
+import org.openrndr.draw.Drawer
 
 
 class Chip8 {
+    private var drawer: Drawer? = null
     private var opcode: UShort? = null
     private var memory: UByteArray = UByteArray(4096)
     private var graphics: UByteArray = UByteArray(64 * 32)
@@ -51,7 +53,8 @@ class Chip8 {
         return (uShort.toInt() shr bits).toUShort()
      }
     @OptIn(ExperimentalUnsignedTypes::class)
-    fun init(self: Chip8) {
+    fun init(self: Chip8, drawerIn: Drawer) {
+        self.drawer = drawerIn
         self.programCounter = 512u
         self.opcode = 0u
         self.registerIndex = 0u
@@ -79,6 +82,8 @@ class Chip8 {
             throw Exception("OPcode out of range! Your program has an error!")
         }
 
+        self.drawer?.clear(ColorRGBa.BLUE)
+
         self.opcode = self.memory[self.programCounter?.toInt()!!].toUShort()
         self.opcode = shiftLeft(self.opcode!!, 8).or(self.memory[(self.programCounter!! + 1u).toInt()].toUShort())
 
@@ -97,7 +102,6 @@ class Chip8 {
             32768u.toUShort() -> {
                 when(opcode?.and(15u)) {
                     0u.toUShort() -> {
-
                     }
                 }
             }
