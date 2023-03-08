@@ -137,7 +137,39 @@ class Chip8 {
             }
 
             0x2000u -> {
+                // 2NNN - Call subroutine at nnn.
+                stack[(++sp).toInt()] = programCounter
+                programCounter = opcode and 0x0FFFu
+                self.incrementPc(self)
+            }
 
+            0x3000u -> {
+                // 3XNN - Skip next instruction if Vx = kk.
+                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] == (self.opcode.and(0x00FFu)).toUByte()) {
+                    self.programCounter = (self.programCounter + 4u).toUShort()
+                } else {
+                    self.incrementPc(self)
+                }
+            }
+
+            0x4000u -> {
+                // 4XNN - Skip next instruction if Vx != kk.
+                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] != (self.opcode.and(0x00FFu)).toUByte()) {
+                    self.programCounter = (self.programCounter + 4u).toUShort()
+                } else {
+                    self.incrementPc(self)
+                }
+            }
+
+            0x5000u -> {
+                // 5XY0 - Skip next instruction if Vx = Vy.
+                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] == self.registers[self.opcode.and(0x00F0u)
+                        .toInt() ushr 4]
+                ) {
+                    self.programCounter = (self.programCounter + 4u).toUShort()
+                } else {
+                    self.incrementPc(self)
+                }
             }
         }
     }
