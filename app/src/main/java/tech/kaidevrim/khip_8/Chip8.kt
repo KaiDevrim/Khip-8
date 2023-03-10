@@ -47,6 +47,7 @@ class Chip8 {
     )
 
     private var keys: UByteArray = UByteArray(16)
+    private var tmp: Int = 0
 
     private fun randomUInt() = Random(Clock.System.now().epochSeconds).nextUInt()
     private fun shiftLeft(uShort: UShort, bits: Int): UShort {
@@ -111,8 +112,6 @@ class Chip8 {
 
     @OptIn(ExperimentalUnsignedTypes::class)
     private fun decode(self: Chip8) {
-        var x: Int = 0
-
         // Exact instructions
         when (opcode.toUInt()) {
             // Clear Screen
@@ -170,6 +169,31 @@ class Chip8 {
                 } else {
                     self.incrementPc(self)
                 }
+            }
+
+            0x6000u -> {
+                // 6XNN - Set Vx = kk.
+                self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] = (self.opcode.and(0x00FFu)).toUByte()
+                self.incrementPc(self)
+            }
+
+            0x7000u -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                val tmp2: UInt = (self.opcode.and(0x00FFu)).toUInt()
+                val result: UInt = self.registers[self.tmp] + tmp2
+
+                if (result >= 256u) {
+                    self.registers[self.tmp] = (result - 256u).toUByte()
+                } else {
+                    self.registers[self.tmp] = result.toUByte()
+                }
+
+                self.incrementPc(self)
+            }
+        }
+        when (opcode.and((0xF00Fu)).toUInt()) {
+            0x8000u -> {
+
             }
         }
     }
