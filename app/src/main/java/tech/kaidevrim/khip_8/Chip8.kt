@@ -5,7 +5,6 @@ package tech.kaidevrim.khip_8
 import kotlinx.datetime.Clock
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.Drawer
-import kotlin.math.floor
 import kotlin.random.Random
 import kotlin.random.nextUInt
 
@@ -71,6 +70,11 @@ class Chip8 {
 
         self.chip8Fontset.forEachIndexed { index, element -> self.memory[index] = element.toUByte() }
         self.tmp = 0
+        clearDisplay(self)
+    }
+
+    fun loadROM(self: Chip8, rom: UByteArray) {
+        rom.forEachIndexed { index, element -> self.memory[index + 0x200] = element }
     }
 
     private fun incrementPc(self: Chip8, by: UShort = 2u) {
@@ -300,13 +304,39 @@ class Chip8 {
             }
 
             0xD000u -> {
-                // do display things
+                // do display things, DXYN - Display n-byte sprite starting at memory location registerIndex at (Vx, Vy), set VF = collision.
+                val x: UByte = self.registers[(self.opcode.and(0x0F00u).toInt() shr 8)]
+                val y: UByte = self.registers[(self.opcode.and(0x00F0u).toInt() shr 4)]
+                val height: UByte = self.opcode.and(0x000Fu).toUByte()
+                self.registers[0xF] = 0u
+                // Put the variables x and y into the self.graphics array according to their position on the screen.
+                // Set the self.registers[0xF] register to 1 if any pixels are flipped from 1 to 0.
+                // If self.registers[0xF] is set to 1, then the program will know that a collision has occurred.
+                for (yline in 0 until height.toInt()) {
+                    val pixel: UByte = self.memory[self.registerIndex.toInt() + yline]
+                    for (xline in 0 until 8) {
+                        val pixelIndex = (x.toInt() + xline + ((y.toInt() + yline) * 64))
+                        if (pixelIndex >= 2048) {
+                            continue
+                        }
+                        if (pixelIndex < 0) {
+                            continue
+                        }
+                        if ((pixel.toInt() shr (7 - xline)) and 0x1 == 1) {
+                            if (self.graphics[pixelIndex] == 1u.toUByte()) {
+                                self.registers[0xF] = 1u
+                            }
+                            self.graphics[pixelIndex] = (self.graphics[pixelIndex].xor(1u))
+                        }
+                    }
+                }
+                self.incrementPc(self)
             }
         }
 
         when (self.opcode.and(0xF0FFu).toUInt()) {
             0xE09Eu -> {
-                
+
             }
         }
     }
@@ -320,9 +350,15 @@ class Chip8 {
                 self.drawer.fill = ColorRGBa.WHITE
             }
             val x: Int = (i % 64)
-            val y: Int = floor(i / 64.0).toInt()
+            val y: Int = kotlin.math.floor(i / 64.0).toInt()
 
             self.drawer.rectangle(x * scale, y * scale, scale, scale)
+        }
+    }
+
+    private fun clearDisplay(self: Chip8) {
+        for (i in self.graphics.indices) {
+            self.graphics[i] = 0u
         }
     }
 }
