@@ -3,6 +3,7 @@
 package tech.kaidevrim.khip_8
 
 import kotlinx.datetime.Clock
+import org.openrndr.KeyEvents
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.Drawer
 import kotlin.random.Random
@@ -11,6 +12,7 @@ import kotlin.random.nextUInt
 
 class Chip8 {
     private lateinit var drawer: Drawer
+    private lateinit var keyboard: KeyEvents
     private var scale: Double = 10.0
 
     private var opcode: UShort = 0u
@@ -45,13 +47,13 @@ class Chip8 {
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     )
 
-    private var keys: UByteArray = UByteArray(16)
+    private var keys: IntArray = IntArray(16)
     private var tmp: Int = 0
 
     private fun randomUInt() = Random(Clock.System.now().epochSeconds).nextUInt(256u)
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    fun init(self: Chip8, drawerIn: Drawer) {
+    fun init(self: Chip8, drawerIn: Drawer, keyboard: KeyEvents) {
         self.drawer = drawerIn
         self.scale = 10.0
         self.programCounter = 0x200u
@@ -63,13 +65,22 @@ class Chip8 {
         self.graphics.forEachIndexed { index, _ -> self.graphics[index] = 0u }
         self.registers.forEachIndexed { index, _ -> self.registers[index] = 0u }
         self.stack.forEachIndexed { index, _ -> self.stack[index] = 0u }
-        self.keys.forEachIndexed { index, _ -> self.keys[index] = 0u }
+        self.keys.forEachIndexed { index, _ -> self.keys[index] = 0 }
 
         self.delayTimer = 0u
         self.soundTimer = 0u
 
-        self.chip8Fontset.forEachIndexed { index, element -> self.memory[index] = element.toUByte() }
+        self.chip8Fontset.forEachIndexed { index, element ->
+            self.memory[index] = element.toUByte()
+        }
+        self.keys = intArrayOf(
+            49, 50, 51, 67, // 1, 2, 3, C
+            52, 53, 54, 68, // 4, 5, 6, D
+            55, 56, 57, 69, // 7, 8, 9, E
+            65, 48, 66, 70 // A, 0, B, F
+        )
         self.tmp = 0
+        self.keyboard = keyboard
         clearDisplay(self)
     }
 
@@ -81,10 +92,10 @@ class Chip8 {
         self.programCounter = (self.programCounter + by).toUShort()
     }
 
-    fun cycle(self: Chip8) {
+    fun cycle(self: Chip8, key: Int = 0) {
         setDisplay(self)
         getOpcode(self)
-        decode(self)
+        decode(self, key)
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
@@ -94,16 +105,17 @@ class Chip8 {
         }
         self.opcode = self.memory[self.programCounter.toInt()].toUShort()
         self.opcode =
-            (self.opcode.toInt() shl 8).toUShort().or(self.memory[(self.programCounter + 1u).toInt()].toUShort())
+            (self.opcode.toInt() shl 8).toUShort()
+                .or(self.memory[(self.programCounter + 1u).toInt()].toUShort())
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
-    private fun decode(self: Chip8) {
+    private fun decode(self: Chip8, key: Int = 0) {
         // Exact instructions
         when (self.opcode.toUInt()) {
             // Clear Screen
             0x00E0u -> {
-                self.graphics.forEachIndexed { index, _ -> self.graphics[index] = 0u }
+                clearDisplay(self)
                 self.incrementPc(self)
             }
 
@@ -131,7 +143,10 @@ class Chip8 {
 
             0x3000u -> {
                 // 3XNN - Skip next instruction if Vx = kk.
-                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] == (self.opcode.and(0x00FFu)).toUByte()) {
+                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] == (self.opcode.and(
+                        0x00FFu
+                    )).toUByte()
+                ) {
                     self.incrementPc(self, 4u)
                 } else {
                     self.incrementPc(self)
@@ -140,7 +155,10 @@ class Chip8 {
 
             0x4000u -> {
                 // 4XNN - Skip next instruction if Vx != kk.
-                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] != (self.opcode.and(0x00FFu)).toUByte()) {
+                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] != (self.opcode.and(
+                        0x00FFu
+                    )).toUByte()
+                ) {
                     self.incrementPc(self, 4u)
                 } else {
                     self.incrementPc(self)
@@ -149,7 +167,9 @@ class Chip8 {
 
             0x5000u -> {
                 // 5XY0 - Skip next instruction if Vx = Vy.
-                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] == self.registers[self.opcode.and(0x00F0u)
+                if (self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] == self.registers[self.opcode.and(
+                        0x00F0u
+                    )
                         .toInt() ushr 4]
                 ) {
                     self.incrementPc(self, 4u)
@@ -160,7 +180,8 @@ class Chip8 {
 
             0x6000u -> {
                 // 6XNN - Set Vx = kk.
-                self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] = (self.opcode.and(0x00FFu)).toUByte()
+                self.registers[(self.opcode.and(0x0F00u)).toInt() ushr 8] =
+                    (self.opcode.and(0x00FFu)).toUByte()
                 self.incrementPc(self)
             }
 
@@ -189,7 +210,9 @@ class Chip8 {
             0x8001u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
                 self.registers[self.tmp] =
-                    (self.registers[self.tmp].or(self.registers[(self.opcode.and(0x00F0u).toInt() ushr 4)]))
+                    (self.registers[self.tmp].or(
+                        self.registers[(self.opcode.and(0x00F0u).toInt() ushr 4)]
+                    ))
 
                 self.incrementPc(self)
             }
@@ -197,7 +220,9 @@ class Chip8 {
             0x8002u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
                 self.registers[self.tmp] =
-                    (self.registers[self.tmp].and(self.registers[self.opcode.and(0x00F0u).toInt() ushr 4]))
+                    (self.registers[self.tmp].and(
+                        self.registers[self.opcode.and(0x00F0u).toInt() ushr 4]
+                    ))
 
                 self.incrementPc(self)
             }
@@ -205,14 +230,17 @@ class Chip8 {
             0x8003u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
                 self.registers[self.tmp] =
-                    (self.registers[self.tmp].xor(self.registers[(self.opcode.and(0x00F0u).toInt() ushr 4)]))
+                    (self.registers[self.tmp].xor(
+                        self.registers[(self.opcode.and(0x00F0u).toInt() ushr 4)]
+                    ))
 
                 self.incrementPc(self)
             }
 
             0x8004u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
-                val sum: UInt = self.registers[self.tmp] + self.registers[(self.opcode.and(0x00F0u).toInt() ushr 4)]
+                val sum: UInt = self.registers[self.tmp] + self.registers[(self.opcode.and(0x00F0u)
+                    .toInt() ushr 4)]
                 if (sum > 0xFFu) {
                     self.registers[0xF] = 1u
                 } else {
@@ -225,7 +253,9 @@ class Chip8 {
             0x8005u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
 
-                if (self.registers[(self.opcode.and(0x00F0u).toInt()) ushr 4] > self.registers[self.tmp]) {
+                if (self.registers[(self.opcode.and(0x00F0u)
+                        .toInt()) ushr 4] > self.registers[self.tmp]
+                ) {
                     self.registers[0xF] = 0u
                 } else {
                     self.registers[0xF] = 1u
@@ -252,14 +282,17 @@ class Chip8 {
             0x8007u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
 
-                if (self.registers[(self.opcode.and(0x0F00u).toInt() ushr 4)] > self.registers[self.tmp]) {
+                if (self.registers[(self.opcode.and(0x0F00u)
+                        .toInt() ushr 4)] > self.registers[self.tmp]
+                ) {
                     self.registers[0xF] = 1u
                 } else {
                     self.registers[0xF] = 0u
                 }
 
                 self.registers[self.tmp] =
-                    ((self.registers[(self.opcode.and(0x00F0u).toInt() ushr 4)] - self.registers[self.tmp]).and(0xFFu)
+                    ((self.registers[(self.opcode.and(0x00F0u)
+                        .toInt() ushr 4)] - self.registers[self.tmp]).and(0xFFu)
                         .toUByte())
 
                 self.incrementPc(self)
@@ -273,13 +306,16 @@ class Chip8 {
                     self.registers[0x1] = 0u
                 }
 
-                self.registers[self.tmp] = (((self.registers[self.tmp].toInt() shl 1).toUByte()).and(0xFFu))
+                self.registers[self.tmp] =
+                    (((self.registers[self.tmp].toInt() shl 1).toUByte()).and(0xFFu))
                 self.incrementPc(self)
             }
 
             0x9000u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
-                if (self.registers[self.tmp] != self.registers[(self.opcode.and(0x00F0u).toInt()) ushr 4]) {
+                if (self.registers[self.tmp] != self.registers[(self.opcode.and(0x00F0u)
+                        .toInt()) ushr 4]
+                ) {
                     self.incrementPc(self, 4u)
                 } else {
                     self.incrementPc(self)
@@ -298,7 +334,8 @@ class Chip8 {
 
             0xC000u -> {
                 self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
-                self.registers[self.tmp] = randomUInt().and(self.opcode.and(0x00FFu).toUInt()).toUByte()
+                self.registers[self.tmp] =
+                    randomUInt().and(self.opcode.and(0x00FFu).toUInt()).toUByte()
 
                 self.incrementPc(self)
             }
@@ -335,8 +372,93 @@ class Chip8 {
         }
 
         when (self.opcode.and(0xF0FFu).toUInt()) {
+            // Generate the Chip-8 keypress opcodes and their corresponding functions.
             0xE09Eu -> {
+                println(key)
+                if (key == self.registers[(self.opcode.and(0x0F00u)
+                        .toInt() ushr 8)].toInt()
+                ) {
+                    self.incrementPc(self, 4u)
+                } else {
+                    self.incrementPc(self)
+                }
+            }
 
+            0xE0A1u -> {
+                println(key)
+                if (key.toUByte().toInt() != self.registers[(self.opcode.and(0x0F00u)
+                        .toInt() ushr 8)].toInt()
+                ) {
+                    self.incrementPc(self, 4u)
+                } else {
+                    self.incrementPc(self)
+                }
+            }
+
+            0xF00Au -> {
+                println(key)
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                for (i in 0..15) {
+                    if (key == self.keys[i]) {
+                        self.registers[self.tmp] = i.toUByte()
+                        self.incrementPc(self)
+                    }
+                }
+            }
+
+            0xF015u -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                self.delayTimer = self.registers[self.tmp]
+                self.incrementPc(self)
+            }
+
+            0xF018u -> {
+                self.tmp = (opcode.and(0x0F00u).toInt() ushr 8)
+                self.soundTimer = self.registers[self.tmp]
+                self.incrementPc(self)
+            }
+
+            0xF01Eu -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                if (self.registerIndex + self.registers[self.tmp].toInt().toUInt() > 0xFFFu) {
+                    self.registers[0xF] = 1u
+                } else {
+                    self.registers[0xF] = 0u
+                }
+                self.incrementPc(self)
+            }
+
+            0xF029u -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                self.registerIndex = self.registers[self.tmp].toInt().times(5).toUInt().toUShort()
+                self.incrementPc(self)
+            }
+
+            0xF033u -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                self.memory[self.registerIndex.toInt()] =
+                    ((self.registers[self.tmp] / 100u).toUByte())
+                self.memory[self.registerIndex.toInt() + 1] =
+                    (((self.registers[self.tmp] % 100u) / 10u).toUByte())
+                self.memory[self.registerIndex.toInt() + 2] =
+                    (((self.registers[self.tmp] % 100u) % 10u).toUByte())
+                self.incrementPc(self)
+            }
+
+            0xF055u -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                for (i in 0..self.tmp) {
+                    self.memory[self.registerIndex.toInt() + i] = self.registers[i]
+                }
+                self.incrementPc(self)
+            }
+
+            0xF065u -> {
+                self.tmp = (self.opcode.and(0x0F00u).toInt() ushr 8)
+                for (i in 0..self.tmp) {
+                    self.registers[i] = self.memory[self.registerIndex.toInt() + i].and(0xFFu)
+                }
+                self.incrementPc(self)
             }
         }
     }
@@ -351,7 +473,7 @@ class Chip8 {
             }
             val x: Int = (i % 64)
             val y: Int = kotlin.math.floor(i / 64.0).toInt()
-
+            self.drawer.strokeWeight = 0.0
             self.drawer.rectangle(x * scale, y * scale, scale, scale)
         }
     }
