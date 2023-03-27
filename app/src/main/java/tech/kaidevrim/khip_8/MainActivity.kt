@@ -20,7 +20,7 @@ fun main() = application {
 
     program {
         chip8.init(chip8, drawer, keyboard)
-        val romBytes = File("/Users/kai/Downloads/chip8-test-suite.ch8").readBytes()
+        val romBytes = File("/Users/kai/Downloads/octojam1title.ch8").readBytes()
             .toUByteArray()
         chip8.loadROM(chip8, romBytes)
         drawer.fill = ColorRGBa.WHITE
